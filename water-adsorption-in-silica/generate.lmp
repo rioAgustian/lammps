@@ -1,0 +1,45 @@
+units metal
+boundary p p p
+atom_style full
+pair_style vashishta
+neighbor 1.0 bin
+neigh_modify delay 1
+
+region box block -19.0 18.0 -9.0 9.0 -9.0 9.0
+create_box 2 box
+labelmap atom 1 Si 2 O
+mass Si 28.0855
+mass O  15.9994
+create_atoms Si random 240 5802 box overlap 2.0 maxtry 500
+create_atoms O  random 480 1072 box overlap 2.0 maxtry 500
+
+pair_coeff *  * SiO.1990.vashishta Si O
+
+thermo 250
+thermo_style custom step temp etotal vol density
+
+variable mystep equal step
+variable mytemp equal temp
+variable myetotal equal etotal
+variable myvol equal vol
+variable mydensity equal density
+
+# Use fix print to output
+fix print_data all print 100 "${mystep} ${mytemp} ${myetotal} ${myvol} ${mydensity} " file number_data.txt screen no title "step temp tot_eng vol density"
+
+dump mydump all atom 100 dump.lammpstrj
+
+velocity all create 6000 8289 rot yes dist gaussian
+fix mynvt all nvt temp 6000 6000 0.1
+timestep 0.001
+run 10000
+
+fix mynvt all nvt temp 6000 300 0.1
+run 30000
+
+unfix mynvt 
+
+fix mynpt all npt temp 300 300 0.1 aniso 1 1 1 
+run 10000
+
+write_data generate.data

@@ -1,0 +1,282 @@
+LAMMPS (12 Jun 2025)
+  using 1 OpenMP thread(s) per MPI task
+Loaded 1 plugins from C:\Users\Rio Agustian\AppData\Local\LAMMPS 64-bit 12Jun2025\plugins
+units metal
+boundary p p p
+atom_style full
+neighbor 1.0 bin
+neigh_modify delay 1
+pair_style lj/cut/tip4p/long OW HW OW-HW HW-OW-HW 0.1546 10
+kspace_style pppm/tip4p 1.0e-5
+bond_style harmonic
+angle_style harmonic
+
+read_data cracking.data
+Reading data file ...
+  orthogonal box = (-22.307114 -8.6932684 -8.5031301) to (21.307114 8.6932684 8.5031301)
+  1 by 1 by 1 MPI processor grid
+  reading atom labelmap ...
+  reading bond labelmap ...
+  reading angle labelmap ...
+  reading atoms ...
+  720 atoms
+  reading velocities ...
+  720 velocities
+Finding 1-2 1-3 1-4 neighbors ...
+  special bond factors lj:    0        0        0       
+  special bond factors coul:  0        0        0       
+     0 = max # of 1-2 neighbors
+     0 = max # of 1-3 neighbors
+     0 = max # of 1-4 neighbors
+     3 = max # of special neighbors
+  special bonds CPU = 0.004 seconds
+  read_data CPU = 0.042 seconds
+molecule h2omol H2O.mol
+Read molecule template h2omol:
+# LAMMPS Molecule File
+  1 molecules
+  0 fragments
+  3 atoms with max type 4
+  2 bonds with max type 1
+  1 angles with max type 1
+  0 dihedrals with max type 0
+  0 impropers with max type 0
+create_atoms 0 random 3 3245 NULL mol h2omol 4585 overlap 2.0 maxtry 50
+Created 9 atoms
+  using lattice units in orthogonal box = (-22.307114 -8.6932684 -8.5031301) to (21.307114 8.6932684 8.5031301)
+  create_atoms CPU = 0.011 seconds
+
+group SiO type Si O
+720 atoms in group SiO
+group H2O type OW HW
+9 atoms in group H2O
+
+pair_coeff * * 0 0
+pair_coeff Si OW 0.0057 4.42
+pair_coeff O OW 0.0043 3.12
+pair_coeff OW OW 0.008 3.1589
+pair_coeff HW HW 0.0 0.0
+bond_coeff OW-HW 0 0.9572
+angle_coeff HW-OW-HW 0 104.52
+
+variable oxygen atom type==label2type(atom,OW)
+group oxygen dynamic all var oxygen
+dynamic group oxygen defined
+variable nO equal count(oxygen)
+
+fix shak H2O shake 1.0e-5 200 0 b OW-HW a HW-OW-HW mol h2omol
+Finding SHAKE clusters ...
+       0 = # of size 2 clusters
+       0 = # of size 3 clusters
+       0 = # of size 4 clusters
+       3 = # of frozen angles
+  find clusters CPU = 0.001 seconds
+
+compute  ctH2O H2O temp
+compute_modify thermo_temp dynamic/dof yes
+compute_modify ctH2O dynamic/dof yes
+fix mynvt H2O nvt temp 300 300 0.1
+fix_modify mynvt temp ctH2O
+WARNING: Temperature for fix modify is not for group all (src/fix_nh.cpp:1402)
+timestep 0.001
+
+variable tfac equal 5.0/3.0
+fix fgcmc H2O gcmc 100 100 0 0 65899 300 -0.5 0.1 mol h2omol tfac_insert ${tfac} shake shak full_energy pressure 100
+fix fgcmc H2O gcmc 100 100 0 0 65899 300 -0.5 0.1 mol h2omol tfac_insert 1.66666666666667 shake shak full_energy pressure 100
+
+thermo 250
+thermo_style custom step temp etotal v_nO f_fgcmc[3] f_fgcmc[4] f_fgcmc[5] f_fgcmc[6] press
+
+variable mystep equal step
+variable mytemp equal temp
+variable myetotal equal etotal
+variable myvol equal vol
+variable mydensity equal density
+variable mypress equal press
+
+# Use fix print to output
+fix print_data all print 100 "${mystep} ${mytemp} ${myetotal} ${myvol} ${mydensity} ${mypress} ${nO}" file number_data.txt screen no title "step temp tot_eng vol density press nO"
+
+dump mydump all atom 250 dump_gcmc.lammpstrj
+
+run 25000
+
+CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
+
+Your simulation uses code contributions which should be cited:
+
+- Type Label Framework: https://doi.org/10.1021/acs.jpcb.3c08419
+
+@Article{Gissinger24,
+ author = {Jacob R. Gissinger, Ilia Nikiforov, Yaser Afshar, Brendon Waters, Moon-ki Choi, Daniel S. Karls, Alexander Stukowski, Wonpil Im, Hendrik Heinz, Axel Kohlmeyer, and Ellad B. Tadmor},
+ title = {Type Label Framework for Bonded Force Fields in LAMMPS},
+ journal = {J. Phys. Chem. B},
+ year =    2024,
+ volume =  128,
+ number =  13,
+ pages =   {3282--3297}
+}
+
+CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
+
+PPPM initialization ...
+  extracting TIP4P info from pair style
+  using 12-bit tables for long-range coulomb (src/kspace.cpp:345)
+  G vector (1/distance) = 0.24295096
+  grid = 15 8 8
+  stencil order = 5
+  estimated absolute RMS force accuracy = 6.2596906e-05
+  estimated relative force accuracy = 4.3471145e-06
+  using double precision FFTW3
+  3d grid and FFT values/proc = 3380 960
+WARNING: Communication cutoff 0 is shorter than a bond length based estimate of 2.4358. This may lead to errors. (src/comm.cpp:744)
+WARNING: Increasing communication cutoff to 12.1118 for TIP4P pair style (src/KSPACE/pair_lj_cut_tip4p_long.cpp:497)
+Generated 0 of 6 mixed pair_coeff terms from geometric mixing rule
+0 atoms in group FixGCMC:gcmc_exclusion_group:fgcmc
+0 atoms in group FixGCMC:rotation_gas_atoms:fgcmc
+WARNING: Neighbor exclusions used with KSpace solver may give inconsistent Coulombic energies (src/neighbor.cpp:671)
+Neighbor list info ...
+  update: every = 1 steps, delay = 1 steps, check = yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 11.3092
+  ghost atom cutoff = 12.1118
+  binsize = 5.6546, bins = 8 4 4
+  1 neighbor lists, perpetual/occasional/extra = 1 0 0
+  (1) pair lj/cut/tip4p/long, perpetual
+      attributes: half, newton on
+      pair build: half/bin/newton
+      stencil: half/bin/3d
+      bin: standard
+Per MPI rank memory allocation (min/avg/max) = 9.145 | 9.145 | 9.145 Mbytes
+   Step          Temp          TotEng          v_nO        f_fgcmc[3]     f_fgcmc[4]     f_fgcmc[5]     f_fgcmc[6]       Press     
+         0   301.60505      28.069214      3              0              0              0              0              2341.0051    
+       250   302.26601      27.547846      10             133            9              167            2              2230.7636    
+       500   304.80913      26.947884      12             251            13             249            4              2310.9779    
+       750   303.69013      25.970321      16             389            17             411            4              2262.5902    
+      1000   306.42373      24.813664      18             490            21             510            6              2222.5869    
+      1250   309.67587      24.184898      24             642            27             658            6              2115.8984    
+      1500   304.15432      22.176038      25             738            28             762            6              2058.7564    
+      1750   306.03537      21.126084      27             892            33             908            9              1992.7938    
+      2000   304.62323      19.482056      31             989            37             1011           9              2141.3299    
+      2250   305.26149      17.283735      33             1145           39             1155           9              2052.1451    
+      2500   305.79789      16.330849      36             1248           42             1252           9              2387.8981    
+      2750   302.71257      15.450065      37             1395           44             1405           10             2088.336     
+      3000   297.7291       14.525858      37             1498           45             1502           11             2164.319     
+      3250   302.60048      15.006267      37             1668           46             1632           12             2002.8281    
+      3500   305.43701      14.520857      39             1780           48             1720           12             1799.5907    
+      3750   299.00584      13.170922      40             1942           49             1858           12             2149.9241    
+      4000   303.40486      13.677016      41             2043           51             1957           13             1884.9764    
+      4250   301.32306      12.693963      44             2195           55             2105           14             2145.4914    
+      4500   305.20766      12.022103      44             2282           55             2218           14             2004.5929    
+      4750   300.61905      11.53463       44             2428           55             2372           14             2137.1214    
+      5000   303.33398      12.40081       44             2522           55             2478           14             2248.3306    
+      5250   299.54076      11.149353      45             2675           56             2625           14             2079.0067    
+      5500   309.14205      12.109026      46             2782           57             2718           14             2235.4079    
+      5750   303.6412       10.812737      47             2926           58             2874           14             1971.6073    
+      6000   306.51663      11.444212      47             3032           58             2968           14             2182.3133    
+      6250   302.99722      10.364002      47             3194           58             3106           14             2625.3266    
+      6500   305.91087      10.807624      48             3299           59             3201           14             2089.1057    
+      6750   307.27064      10.527871      48             3452           59             3348           14             2391.7941    
+      7000   302.60964      9.866194       49             3557           60             3443           14             2006.6067    
+      7250   299.74018      9.6913264      49             3713           60             3587           14             2008.9561    
+      7500   301.17163      9.6026997      49             3814           60             3686           14             2003.3456    
+      7750   300.41461      10.02094       50             3965           61             3835           14             2176.0832    
+      8000   302.47783      9.651058       50             4065           61             3935           14             2134.9621    
+      8250   301.6346       9.2896684      50             4232           61             4068           14             1977.8022    
+      8500   308.44004      9.7183515      50             4334           61             4166           14             2295.7192    
+      8750   300.3885       8.491463       50             4480           61             4320           14             1882.146     
+      9000   301.55399      9.2300615      50             4577           61             4423           14             1938.9888    
+      9250   304.97361      8.6836018      50             4712           61             4588           14             2250.3411    
+      9500   303.86745      8.7234236      50             4815           61             4685           14             2271.4084    
+      9750   305.35459      9.2227289      50             4962           61             4838           14             2183.4732    
+     10000   302.79833      8.6224116      50             5065           61             4935           14             2382.4394    
+     10250   299.62168      8.3508514      50             5219           61             5081           14             2233.8709    
+     10500   304.87907      9.4715546      50             5320           62             5180           15             1881.6902    
+     10750   303.41033      8.4812901      51             5468           64             5332           16             2207.1357    
+     11000   305.05512      7.3237543      51             5573           64             5427           16             2021.9181    
+     11250   308.86539      8.2673954      53             5731           66             5569           16             2577.6282    
+     11500   302.97994      7.8166439      53             5832           66             5668           16             2150.4677    
+     11750   299.66294      7.2591524      53             5983           66             5817           16             2522.3156    
+     12000   305.28745      7.1091916      53             6078           66             5922           16             2031.7396    
+     12250   302.83662      7.4940855      53             6211           66             6089           16             2241.4646    
+     12500   301.53507      7.4578164      53             6308           66             6192           16             2213.863     
+     12750   299.84385      8.0130847      53             6469           66             6331           16             2187.4645    
+     13000   303.25856      6.9077937      54             6564           67             6436           16             2290.386     
+     13250   306.37389      7.2358611      55             6714           68             6586           16             2192.9466    
+     13500   300.76547      6.2861547      55             6807           68             6693           16             1826.6502    
+     13750   302.04419      7.2624113      55             6956           68             6844           16             2050.9735    
+     14000   301.29788      6.4822139      55             7056           68             6944           16             2202.966     
+     14250   298.51999      5.5424559      55             7200           68             7100           16             1940.2198    
+     14500   308.48809      6.8928774      55             7293           68             7207           16             2288.6165    
+     14750   301.39083      5.8474388      55             7439           68             7361           16             1629.5467    
+     15000   302.92768      5.3051501      55             7536           68             7464           16             1833.6527    
+     15250   301.89235      6.2707398      55             7678           68             7622           16             2150.7086    
+     15500   299.67372      5.3459821      56             7776           69             7724           16             2107.7827    
+     15750   301.82812      4.9530602      58             7927           71             7873           16             2230.9387    
+     16000   298.39008      3.858205       58             8027           71             7973           16             2089.327     
+     16250   301.92895      5.3275973      58             8188           71             8112           16             2555.8012    
+     16500   299.93165      4.9735331      58             8275           71             8225           16             2280.8172    
+     16750   304.45966      4.8428628      59             8426           72             8374           16             2109.2327    
+     17000   308.24522      6.1788304      60             8521           73             8479           16             2304.205     
+     17250   304.06706      4.5886191      60             8663           73             8637           16             2257.0315    
+     17500   297.12         3.7954544      60             8779           73             8721           16             2440.5617    
+     17750   303.00673      4.9841844      60             8927           73             8873           16             2069.7024    
+     18000   300.10502      3.8079029      60             9019           73             8981           16             2664.8235    
+     18250   303.40132      3.8540591      60             9166           73             9134           16             2322.8282    
+     18500   304.23611      3.5914361      60             9263           73             9237           16             2323.8193    
+     18750   298.2247       2.3314291      60             9411           73             9389           16             2161.802     
+     19000   301.24084      3.4620826      60             9508           73             9492           16             2121.768     
+     19250   306.06181      4.3169973      60             9653           73             9647           16             2517.3279    
+     19500   300.39687      3.9202642      61             9745           74             9755           16             1952.9723    
+     19750   302.08941      2.7036374      62             9892           75             9908           16             2203.4487    
+     20000   300.29997      2.9421084      62             9995           75             10005          16             2313.1325    
+     20250   306.79293      2.6543769      62             10148          75             10152          16             2430.9567    
+     20500   305.09273      2.6214774      62             10245          75             10255          16             2499.973     
+     20750   304.98336      3.0540471      62             10400          75             10400          16             2503.0564    
+     21000   304.2762       3.6623816      62             10511          75             10489          16             2231.2945    
+     21250   305.67829      3.9776899      62             10663          75             10637          16             2822.6002    
+     21500   300.29469      2.2261349      62             10757          75             10743          16             2104.1513    
+     21750   301.65509      2.8350037      62             10904          75             10896          16             2663.4511    
+     22000   305.40151      3.3902769      62             11006          75             10994          16             2069.6127    
+     22250   299.10283      2.1830923      63             11144          76             11156          16             2084.9784    
+     22500   304.59307      2.6812239      63             11228          76             11272          16             2719.7484    
+     22750   303.94176      2.5154331      63             11370          76             11430          16             2684.0727    
+     23000   299.64799      2.9090258      63             11465          76             11535          16             2810.0682    
+     23250   305.93937      3.1325126      63             11596          76             11704          16             2474.2686    
+     23500   295.24284      1.8580544      63             11694          76             11806          16             2657.5057    
+     23750   307.13294      2.9840523      63             11838          77             11962          17             2635.1653    
+     24000   299.57554      2.1053093      63             11932          77             12068          17             2265.6349    
+     24250   302.49246      2.2869797      63             12082          77             12218          17             2688.7822    
+     24500   309.7378       3.3113721      63             12193          77             12307          17             2626.6564    
+     24750   302.093        1.7358096      63             12343          77             12457          17             2089.9364    
+     25000   306.46514      2.5640093      63             12441          77             12559          17             2848.8143    
+Loop time of 951.68 on 1 procs for 25000 steps with 909 atoms
+
+Performance: 2.270 ns/day, 10.574 hours/ns, 26.269 timesteps/s, 23.879 katom-step/s
+85.5% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 292.66     | 292.66     | 292.66     |   0.0 | 30.75
+Bond    | 0.4164     | 0.4164     | 0.4164     |   0.0 |  0.04
+Kspace  | 17.535     | 17.535     | 17.535     |   0.0 |  1.84
+Neigh   | 27.016     | 27.016     | 27.016     |   0.0 |  2.84
+Comm    | 2.1019     | 2.1019     | 2.1019     |   0.0 |  0.22
+Output  | 0.60323    | 0.60323    | 0.60323    |   0.0 |  0.06
+Modify  | 610.36     | 610.36     | 610.36     |   0.0 | 64.13
+Other   |            | 0.9866     |            |       |  0.10
+
+Nlocal:            909 ave         909 max         909 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:           7334 ave        7334 max        7334 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:         193552 ave      193552 max      193552 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 193552
+Ave neighs/atom = 212.92849
+Ave special neighs/atom = 0.41584158
+Neighbor list builds = 27382
+Dangerous builds = 0
+Total wall time: 0:15:51

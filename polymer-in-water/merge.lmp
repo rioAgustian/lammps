@@ -1,0 +1,21 @@
+read_restart water.restart
+
+kspace_style pppm 1e-5
+
+molecule pegmol peg.mol
+create_atoms 0 single 0 0 0 mol pegmol 454756
+
+group PEG type C CPos H HC OAlc OE
+
+delete_atoms overlap 2.0 H2O PEG mol yes
+
+fix mynpt all npt temp 300 300 100 x 1 1 1000
+fix myrct PEG recenter 0 0 0 shift all
+
+dump mydump all atom 250 dump_gcmc.lammpstrj
+thermo 500
+
+timestep 1.0
+run 10000
+
+write_restart merge.restart
